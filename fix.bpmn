@@ -1,0 +1,375 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" id="Definitions_Port_Workflow_v19" targetNamespace="http://camunda.org/examples" exporter="Camunda Modeler" exporterVersion="5.39.0">
+  <bpmn:process id="Port_Workflow" name="Port Workflow v19" isExecutable="true">
+    <bpmn:startEvent id="Start_Main" name="Start Port Operations">
+      <bpmn:outgoing>Flow_StartToGate</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:exclusiveGateway id="Gateway_TransportType" name="Transport Type Decision" default="Flow_SplitToTruck">
+      <bpmn:incoming>Flow_StartToGate</bpmn:incoming>
+      <bpmn:outgoing>Flow_SplitToShip</bpmn:outgoing>
+      <bpmn:outgoing>Flow_SplitToTruck</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:subProcess id="SubProcess_ShipOps" name="Ship Operations">
+      <bpmn:incoming>Flow_SplitToShip</bpmn:incoming>
+      <bpmn:outgoing>Flow_ShipToEnd</bpmn:outgoing>
+      <bpmn:startEvent id="Start_ShipOps" name="Start Ship Ops">
+        <bpmn:outgoing>Flow_ShipStartToDecision</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:exclusiveGateway id="Gateway_ShipDecision" name="Ship Operation Decision">
+        <bpmn:incoming>Flow_ShipStartToDecision</bpmn:incoming>
+        <bpmn:outgoing>Flow_ShipUnloading</bpmn:outgoing>
+        <bpmn:outgoing>Flow_ShipLoading</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:serviceTask id="Task_Crane_Loading_Ship" name="Crane Loading into Ship">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="crane_loading" />
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_ShipLoading</bpmn:incoming>
+        <bpmn:outgoing>Flow_CraneLoadingToEnd_Ship</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="Task_Crane_Unloading_Ship" name="Crane Unloading from Ship">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="crane_unloading" />
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_ShipUnloading</bpmn:incoming>
+        <bpmn:outgoing>Flow_CraneUnloadingToWeighing_Ship</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="Task_Weighing_Ship" name="Weighing Ship Containers">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="weighing" />
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_CraneUnloadingToWeighing_Ship</bpmn:incoming>
+        <bpmn:outgoing>Flow_WeighingToStorage_Ship</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="Task_Storage_Ship" name="Move to Storage (crane)">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="storage" />
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_WeighingToStorage_Ship</bpmn:incoming>
+        <bpmn:outgoing>Flow_StorageToEnd_Ship</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="End_ShipOps" name="End Ship Ops">
+        <bpmn:incoming>Flow_StorageToEnd_Ship</bpmn:incoming>
+        <bpmn:incoming>Flow_CraneLoadingToEnd_Ship</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_ShipStartToDecision" sourceRef="Start_ShipOps" targetRef="Gateway_ShipDecision" />
+      <bpmn:sequenceFlow id="Flow_ShipLoading" name="Loading" sourceRef="Gateway_ShipDecision" targetRef="Task_Crane_Loading_Ship">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=operationType = "loading"</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:sequenceFlow id="Flow_ShipUnloading" name="Unloading" sourceRef="Gateway_ShipDecision" targetRef="Task_Crane_Unloading_Ship">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=operationType = "unloading"</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:sequenceFlow id="Flow_CraneUnloadingToWeighing_Ship" sourceRef="Task_Crane_Unloading_Ship" targetRef="Task_Weighing_Ship" />
+      <bpmn:sequenceFlow id="Flow_WeighingToStorage_Ship" sourceRef="Task_Weighing_Ship" targetRef="Task_Storage_Ship" />
+      <bpmn:sequenceFlow id="Flow_StorageToEnd_Ship" sourceRef="Task_Storage_Ship" targetRef="End_ShipOps" />
+      <bpmn:sequenceFlow id="Flow_CraneLoadingToEnd_Ship" sourceRef="Task_Crane_Loading_Ship" targetRef="End_ShipOps" />
+    </bpmn:subProcess>
+    <bpmn:subProcess id="SubProcess_TruckOps" name="Truck Operations">
+      <bpmn:incoming>Flow_SplitToTruck</bpmn:incoming>
+      <bpmn:outgoing>Flow_TruckToEnd</bpmn:outgoing>
+      <bpmn:startEvent id="Start_TruckOps" name="Start Truck Ops">
+        <bpmn:outgoing>Flow_TruckStartToCheckIn</bpmn:outgoing>
+      </bpmn:startEvent>
+      <bpmn:serviceTask id="Task_TruckCheckIn" name="Truck Check In">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="truck_checkin" />
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_TruckStartToCheckIn</bpmn:incoming>
+        <bpmn:outgoing>Flow_CheckInToDecision</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:exclusiveGateway id="Gateway_TruckDecision" name="Truck Operation Decision">
+        <bpmn:incoming>Flow_CheckInToDecision</bpmn:incoming>
+        <bpmn:outgoing>Flow_TruckLoading</bpmn:outgoing>
+        <bpmn:outgoing>Flow_TruckUnloading</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+      <bpmn:serviceTask id="Task_Crane_Loading_Truck" name="Crane Loading Truck">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="crane_loading" />
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_TruckLoading</bpmn:incoming>
+        <bpmn:outgoing>Flow_CraneLoadingToWeighing_Truck</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="Task_Crane_Unloading_Truck" name="Crane Unloading Truck">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="crane_unloading" />
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_TruckUnloading</bpmn:incoming>
+        <bpmn:outgoing>Flow_CraneUnloadingToStorage_Truck</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="Task_Storage_Unload_Truck" name="Move to Storage (crane)">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="storage" />
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_CraneUnloadingToStorage_Truck</bpmn:incoming>
+        <bpmn:outgoing>Flow_StorageUnloadToCheckOut</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="Task_Weighing_Truck" name="Weighing Truck Containers">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="weighing" />
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_CraneLoadingToWeighing_Truck</bpmn:incoming>
+        <bpmn:outgoing>Flow_WeighingToCheckOut_Truck</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:serviceTask id="Task_TruckCheckOut" name="Truck Check Out">
+        <bpmn:extensionElements>
+          <zeebe:taskDefinition type="truck_checkout" />
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_StorageUnloadToCheckOut</bpmn:incoming>
+        <bpmn:incoming>Flow_WeighingToCheckOut_Truck</bpmn:incoming>
+        <bpmn:outgoing>Flow_CheckOutToEnd</bpmn:outgoing>
+      </bpmn:serviceTask>
+      <bpmn:endEvent id="End_TruckOps" name="End Truck Ops">
+        <bpmn:incoming>Flow_CheckOutToEnd</bpmn:incoming>
+      </bpmn:endEvent>
+      <bpmn:sequenceFlow id="Flow_TruckStartToCheckIn" sourceRef="Start_TruckOps" targetRef="Task_TruckCheckIn" />
+      <bpmn:sequenceFlow id="Flow_CheckInToDecision" sourceRef="Task_TruckCheckIn" targetRef="Gateway_TruckDecision" />
+      <bpmn:sequenceFlow id="Flow_TruckLoading" name="Loading" sourceRef="Gateway_TruckDecision" targetRef="Task_Crane_Loading_Truck">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=operationType = "loading"</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:sequenceFlow id="Flow_TruckUnloading" name="Unloading" sourceRef="Gateway_TruckDecision" targetRef="Task_Crane_Unloading_Truck">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=operationType = "unloading"</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:sequenceFlow id="Flow_CraneUnloadingToStorage_Truck" sourceRef="Task_Crane_Unloading_Truck" targetRef="Task_Storage_Unload_Truck" />
+      <bpmn:sequenceFlow id="Flow_CraneLoadingToWeighing_Truck" sourceRef="Task_Crane_Loading_Truck" targetRef="Task_Weighing_Truck" />
+      <bpmn:sequenceFlow id="Flow_StorageUnloadToCheckOut" sourceRef="Task_Storage_Unload_Truck" targetRef="Task_TruckCheckOut" />
+      <bpmn:sequenceFlow id="Flow_WeighingToCheckOut_Truck" sourceRef="Task_Weighing_Truck" targetRef="Task_TruckCheckOut" />
+      <bpmn:sequenceFlow id="Flow_CheckOutToEnd" sourceRef="Task_TruckCheckOut" targetRef="End_TruckOps" />
+    </bpmn:subProcess>
+    <bpmn:endEvent id="End_Main" name="End Port Operations">
+      <bpmn:incoming>Flow_ShipToEnd</bpmn:incoming>
+      <bpmn:incoming>Flow_TruckToEnd</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_StartToGate" sourceRef="Start_Main" targetRef="Gateway_TransportType" />
+    <bpmn:sequenceFlow id="Flow_SplitToShip" name="Ship Transport" sourceRef="Gateway_TransportType" targetRef="SubProcess_ShipOps">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">=transportationId != null and starts with(transportationId, "ship")</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_SplitToTruck" name="Truck Transport" sourceRef="Gateway_TransportType" targetRef="SubProcess_TruckOps" />
+    <bpmn:sequenceFlow id="Flow_ShipToEnd" sourceRef="SubProcess_ShipOps" targetRef="End_Main" />
+    <bpmn:sequenceFlow id="Flow_TruckToEnd" sourceRef="SubProcess_TruckOps" targetRef="End_Main" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_PortWorkflow">
+    <bpmndi:BPMNPlane id="BPMNPlane_PortWorkflow" bpmnElement="Port_Workflow">
+      <bpmndi:BPMNShape id="Shape_Start_Main" bpmnElement="Start_Main">
+        <dc:Bounds x="160" y="232" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="151" y="275" width="54" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Gateway_TransportType" bpmnElement="Gateway_TransportType" isMarkerVisible="true">
+        <dc:Bounds x="265" y="225" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="253" y="282" width="74" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_End_Main" bpmnElement="End_Main">
+        <dc:Bounds x="1212" y="272" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1148" y="276" width="54" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_SubProcess_ShipOps" bpmnElement="SubProcess_ShipOps" isExpanded="true">
+        <dc:Bounds x="380" y="80" width="700" height="200" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_SubProcess_TruckOps" bpmnElement="SubProcess_TruckOps" isExpanded="true">
+        <dc:Bounds x="380" y="320" width="710" height="220" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Edge_Flow_StartToGate" bpmnElement="Flow_StartToGate">
+        <di:waypoint x="196" y="250" />
+        <di:waypoint x="265" y="250" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_SplitToShip" bpmnElement="Flow_SplitToShip">
+        <di:waypoint x="290" y="225" />
+        <di:waypoint x="290" y="180" />
+        <di:waypoint x="380" y="180" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="298" y="163" width="72" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_SplitToTruck" bpmnElement="Flow_SplitToTruck">
+        <di:waypoint x="290" y="275" />
+        <di:waypoint x="290" y="430" />
+        <di:waypoint x="380" y="430" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="292" y="443" width="76" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_ShipToEnd" bpmnElement="Flow_ShipToEnd">
+        <di:waypoint x="1080" y="180" />
+        <di:waypoint x="1230" y="180" />
+        <di:waypoint x="1230" y="272" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_TruckToEnd" bpmnElement="Flow_TruckToEnd">
+        <di:waypoint x="1090" y="430" />
+        <di:waypoint x="1230" y="430" />
+        <di:waypoint x="1230" y="308" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_SubShipOps">
+    <bpmndi:BPMNPlane id="BPMNPlane_SubShipOps" bpmnElement="SubProcess_ShipOps">
+      <bpmndi:BPMNShape id="Shape_Start_ShipOps" bpmnElement="Start_ShipOps">
+        <dc:Bounds x="170" y="162" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="152" y="205" width="72" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Gateway_ShipDecision" bpmnElement="Gateway_ShipDecision" isMarkerVisible="true">
+        <dc:Bounds x="265" y="155" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="243" y="212" width="74" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_Crane_Loading_Ship" bpmnElement="Task_Crane_Loading_Ship">
+        <dc:Bounds x="370" y="220" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_Crane_Unloading_Ship" bpmnElement="Task_Crane_Unloading_Ship">
+        <dc:Bounds x="370" y="100" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_Weighing_Ship" bpmnElement="Task_Weighing_Ship">
+        <dc:Bounds x="540" y="100" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_Storage_Ship" bpmnElement="Task_Storage_Ship">
+        <dc:Bounds x="710" y="100" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_End_ShipOps" bpmnElement="End_ShipOps">
+        <dc:Bounds x="880" y="202" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="864" y="245" width="68" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Edge_Flow_ShipStartToDecision" bpmnElement="Flow_ShipStartToDecision">
+        <di:waypoint x="206" y="180" />
+        <di:waypoint x="265" y="180" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_ShipLoading" bpmnElement="Flow_ShipLoading">
+        <di:waypoint x="290" y="205" />
+        <di:waypoint x="290" y="260" />
+        <di:waypoint x="370" y="260" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="308" y="243" width="40" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_ShipUnloading" bpmnElement="Flow_ShipUnloading">
+        <di:waypoint x="290" y="155" />
+        <di:waypoint x="290" y="140" />
+        <di:waypoint x="370" y="140" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="303" y="113" width="50" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_CraneUnloadingToWeighing_Ship" bpmnElement="Flow_CraneUnloadingToWeighing_Ship">
+        <di:waypoint x="470" y="140" />
+        <di:waypoint x="540" y="140" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_WeighingToStorage_Ship" bpmnElement="Flow_WeighingToStorage_Ship">
+        <di:waypoint x="640" y="140" />
+        <di:waypoint x="710" y="140" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_StorageToEnd_Ship" bpmnElement="Flow_StorageToEnd_Ship">
+        <di:waypoint x="810" y="140" />
+        <di:waypoint x="845" y="140" />
+        <di:waypoint x="845" y="220" />
+        <di:waypoint x="880" y="220" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_CraneLoadingToEnd_Ship" bpmnElement="Flow_CraneLoadingToEnd_Ship">
+        <di:waypoint x="470" y="260" />
+        <di:waypoint x="675" y="260" />
+        <di:waypoint x="675" y="220" />
+        <di:waypoint x="880" y="220" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_SubTruckOps">
+    <bpmndi:BPMNPlane id="BPMNPlane_SubTruckOps" bpmnElement="SubProcess_TruckOps">
+      <bpmndi:BPMNShape id="Shape_Start_TruckOps" bpmnElement="Start_TruckOps">
+        <dc:Bounds x="180" y="142" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="160" y="185" width="77" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_TruckCheckIn" bpmnElement="Task_TruckCheckIn">
+        <dc:Bounds x="260" y="130" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Gateway_TruckDecision" bpmnElement="Gateway_TruckDecision" isMarkerVisible="true">
+        <dc:Bounds x="405" y="135" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="380" y="196" width="79" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_Crane_Loading_Truck" bpmnElement="Task_Crane_Loading_Truck">
+        <dc:Bounds x="500" y="190" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_Crane_Unloading_Truck" bpmnElement="Task_Crane_Unloading_Truck">
+        <dc:Bounds x="500" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_Storage_Unload_Truck" bpmnElement="Task_Storage_Unload_Truck">
+        <dc:Bounds x="640" y="80" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_Weighing_Truck" bpmnElement="Task_Weighing_Truck">
+        <dc:Bounds x="640" y="190" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_TruckCheckOut" bpmnElement="Task_TruckCheckOut">
+        <dc:Bounds x="770" y="110" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_End_TruckOps" bpmnElement="End_TruckOps">
+        <dc:Bounds x="922" y="142" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="904" y="185" width="73" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Edge_Flow_TruckStartToCheckIn" bpmnElement="Flow_TruckStartToCheckIn">
+        <di:waypoint x="216" y="160" />
+        <di:waypoint x="238" y="160" />
+        <di:waypoint x="238" y="170" />
+        <di:waypoint x="260" y="170" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_CheckInToDecision" bpmnElement="Flow_CheckInToDecision">
+        <di:waypoint x="360" y="170" />
+        <di:waypoint x="383" y="170" />
+        <di:waypoint x="383" y="160" />
+        <di:waypoint x="405" y="160" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_TruckLoading" bpmnElement="Flow_TruckLoading">
+        <di:waypoint x="430" y="185" />
+        <di:waypoint x="430" y="230" />
+        <di:waypoint x="500" y="230" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="438" y="233" width="40" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_TruckUnloading" bpmnElement="Flow_TruckUnloading">
+        <di:waypoint x="430" y="135" />
+        <di:waypoint x="430" y="120" />
+        <di:waypoint x="500" y="120" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="433" y="86" width="50" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_CraneUnloadingToStorage_Truck" bpmnElement="Flow_CraneUnloadingToStorage_Truck">
+        <di:waypoint x="600" y="120" />
+        <di:waypoint x="640" y="120" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_CraneLoadingToWeighing_Truck" bpmnElement="Flow_CraneLoadingToWeighing_Truck">
+        <di:waypoint x="600" y="230" />
+        <di:waypoint x="640" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_StorageUnloadToCheckOut" bpmnElement="Flow_StorageUnloadToCheckOut">
+        <di:waypoint x="740" y="120" />
+        <di:waypoint x="755" y="120" />
+        <di:waypoint x="755" y="150" />
+        <di:waypoint x="770" y="150" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_WeighingToCheckOut_Truck" bpmnElement="Flow_WeighingToCheckOut_Truck">
+        <di:waypoint x="740" y="230" />
+        <di:waypoint x="820" y="230" />
+        <di:waypoint x="820" y="190" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_CheckOutToEnd" bpmnElement="Flow_CheckOutToEnd">
+        <di:waypoint x="870" y="150" />
+        <di:waypoint x="901" y="150" />
+        <di:waypoint x="901" y="160" />
+        <di:waypoint x="922" y="160" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

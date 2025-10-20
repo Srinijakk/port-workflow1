@@ -1,0 +1,17 @@
+# Camunda 8 Port Operations Worker Dependencies
+# Python 3.8+
+
+# Zeebe Client for Camunda 8
+pyzeebe==4.1.0
+
+# PostgreSQL Database Driver
+psycopg2-binary==2.9.9
+
+# Async Support
+aiohttp==3.9.1
+
+# Logging (included in Python standard library, but listed for reference)
+# logging
+
+# Optional: For better development experience
+python-dotenv==1.0.0  # For environment variable management
